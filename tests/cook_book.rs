@@ -1,28 +1,12 @@
-/// Examples specified in the GMock cookbook.
+/// Examples specified in the gMock cookbook.
 ///
 /// https://github.com/google/googletest/blob/master/googlemock/docs/cook_book.md#old-style-mock_methodn-macros
 
+mod common;
+use common::*;
+
 mod cookbook {
-
-use std::io::prelude::*;
-use assert_cmd::Command;
-use tempfile::{NamedTempFile, TempPath};
-
-fn binary() -> Command {
-    Command::cargo_bin("gmock-sed").unwrap()
-}
-
-fn file(contents: &str) -> TempPath {
-    let mut file = NamedTempFile::new().unwrap();
-    file.write(contents.as_bytes()).unwrap();
-
-    file.into_temp_path()
-}
-
-fn read(path: &TempPath) -> String {
-    std::fs::read_to_string(path).unwrap()
-
-}
+use super::*;
 
 macro_rules! cookbook_test {
     ($name:tt $old:tt -> $new:tt) => {
