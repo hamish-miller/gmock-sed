@@ -135,11 +135,16 @@ impl Signature {
             Ok(Signature {
                 _return: String::from(c.get(2).unwrap().as_str()),
                 _name: String::from(c.get(1).unwrap().as_str()),
-                _args: String::from(c.get(3).unwrap().as_str()),
+                _args: Self::fix_void(c.get(3).unwrap().as_str()),
             })
         } else {
             Err(ParseSignatureError)
         }
+    }
+
+    fn fix_void(s: &str) -> String {
+        if s.trim() == "void" { return String::new() }
+        String::from(s)
     }
 
     fn to_string(&self) -> String {
