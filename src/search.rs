@@ -1,10 +1,10 @@
 use std::fmt;
 use regex::Regex;
 
-use crate::regexes::MOCK_METHOD_REGEX;
+use crate::regexes::MOCK_METHOD_SEARCH_REGEX;
 
 pub fn search(source: &str, mode: SearchMode) -> SearchSummary {
-    let re = Regex::new(MOCK_METHOD_REGEX).unwrap();
+    let re = Regex::new(MOCK_METHOD_SEARCH_REGEX).unwrap();
     use SearchMode::*;
     match mode {
         Lazy => SearchSummary::from(re.is_match(source)),
@@ -52,7 +52,14 @@ mod tests {
 
     #[test]
     fn test_singleline_macro() {
-        let cpp = "MOCK_METHOD1(Foo, bool(int))";
+        let cpp = "MOCK_METHOD1(Foo, bool(int));";
+
+        assert!(search(&cpp, SearchMode::Lazy).is_match);
+    }
+
+    #[test]
+    fn test_multiline_macro() {
+        let cpp = "MOCK_METHOD1\n(\nFoo,\nbool\n(int)\n);";
 
         assert!(search(&cpp, SearchMode::Lazy).is_match);
     }

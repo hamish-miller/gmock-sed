@@ -1,3 +1,5 @@
+pub const MOCK_METHOD_SEARCH_REGEX: &'static str = r"(MOCK_METHOD|MOCK_CONST_METHOD)";
+
 pub const MOCK_METHOD_REGEX: &'static str = r"(?x)
     (MOCK.*?_METHOD(?:\d|10).*?)
     \((.*)\)
