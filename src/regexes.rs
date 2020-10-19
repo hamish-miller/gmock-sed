@@ -1,17 +1,16 @@
 pub const MOCK_METHOD_SEARCH_REGEX: &'static str = r"(MOCK_METHOD|MOCK_CONST_METHOD)";
 
-pub const MOCK_METHOD_REGEX: &'static str = r"(?x)
-    (MOCK.*?_METHOD(?:\d|10).*?)
-    \((.*)\)
-";
+macro_rules! _macro_regex {
+    (!) => ( r"MOCK_(CONST_)?METHOD(\d|10)(_T)?(_WITH_CALLTYPE)?" );
+    (?) => ( r"MOCK_(?:CONST_)?METHOD(?:\d|10)(?:_T)?(?:_WITH_CALLTYPE)?" );
+}
 
-pub const MACRO_REGEX: &'static str = r"(?x)
-    MOCK
-    (_CONST)?
-    _METHOD(?:\d|10)
-    (?:_T)?
-    (_WITH_CALLTYPE)?
-";
+pub const MOCK_METHOD_REGEX: &str = concat!(
+    r"(", _macro_regex!(?), r")",
+    r"\s*", r"\((.*)\)"
+);
+
+pub const MACRO_REGEX: &str = _macro_regex!(!);
 
 pub const PARAM_REGEX: &'static str = r"(?x)
     \s*
@@ -82,8 +81,10 @@ mod tests {
             let cpp = "MOCK_CONST_METHOD0_T_WITH_CALLTYPE";
             let c = regex().captures(cpp).unwrap();
 
-            assert_eq!(c.get(1).map(|m| m.as_str()), Some("_CONST"));
-            assert_eq!(c.get(2).map(|m| m.as_str()), Some("_WITH_CALLTYPE"));
+            assert_eq!(c.get(1).map(|m| m.as_str()), Some("CONST_"));
+            assert_eq!(c.get(2).map(|m| m.as_str()), Some("0"));
+            assert_eq!(c.get(3).map(|m| m.as_str()), Some("_T"));
+            assert_eq!(c.get(4).map(|m| m.as_str()), Some("_WITH_CALLTYPE"));
         }
     }
 

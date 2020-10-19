@@ -126,7 +126,7 @@ impl Qualifiers {
         let c = RE.captures(s).unwrap();
         Qualifiers {
             _const: c.get(1).is_some(),
-            _calltype: c.get(2).map(|_| {
+            _calltype: c.get(4).map(|_| {
                 let re = Regex::new(CALLTYPE_REGEX).unwrap();
                 let m = re.find(p).unwrap();
                 String::from(m.as_str())
