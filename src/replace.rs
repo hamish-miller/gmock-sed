@@ -3,7 +3,7 @@ use colored::*;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 
-use crate::regexes::{MOCK_METHOD_REGEX, MACRO_REGEX, PARAM_REGEX, CALLTYPE_REGEX};
+use crate::regexes::{MOCK_METHOD_REGEX, MACRO_REGEX, SIG_REGEX, ARG_REGEX, CALLTYPE_REGEX};
 
 pub fn replace(src: &str) -> ReplaceSummary {
     lazy_static! {
@@ -81,7 +81,7 @@ impl MockMethod {
 struct Signature {
     _return: String,
     _name: String,
-    _args: String,
+    _args: Args,
 }
 
 #[derive(Debug, Clone)]
@@ -90,26 +90,52 @@ struct ParseSignatureError;
 impl Signature {
     fn from_str(s: &str) -> Result<Self, ParseSignatureError> {
         lazy_static! {
-            static ref RE: Regex = Regex::new(PARAM_REGEX).unwrap();
+            static ref RE: Regex = Regex::new(SIG_REGEX).unwrap();
         }
         if let Some(c) = RE.captures(s) {
             Ok(Signature {
                 _return: String::from(c.get(2).unwrap().as_str()),
                 _name: String::from(c.get(1).unwrap().as_str()),
-                _args: Self::fix_void(c.get(3).unwrap().as_str()),
+                _args: Args::from_str(c.get(3).unwrap().as_str()).unwrap(),
             })
         } else {
             Err(ParseSignatureError)
         }
     }
 
-    fn fix_void(s: &str) -> String {
-        if s.trim() == "void" { return String::new() }
-        String::from(s)
+    fn to_string(&self) -> String {
+        format!("{}, {}, ({})", self._return, self._name, self._args.to_string())
+    }
+}
+
+struct Args {
+    _args: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+struct ParseArgError;
+
+impl Args {
+    fn from_str(s: &str) -> Result<Self, ParseArgError> {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(ARG_REGEX).unwrap();
+        }
+
+        let args = RE.find_iter(s).map(|m| m.as_str().to_string()).collect();
+
+        Ok( Args { _args: args })
     }
 
     fn to_string(&self) -> String {
-        format!("{}, {}, ({})", self._return, self._name, self._args)
+        match self._args.len() {
+            0 => String::new(),
+            1 if self.void() => String::new(),
+            _ => self._args.join(", "),
+        }
+    }
+
+    fn void(&self) -> bool {
+        self._args.get(0).unwrap().trim() == "void"
     }
 }
 

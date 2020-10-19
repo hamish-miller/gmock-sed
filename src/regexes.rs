@@ -12,17 +12,15 @@ pub const MOCK_METHOD_REGEX: &str = concat!(
 
 pub const MACRO_REGEX: &str = _macro_regex!(!);
 
-pub const PARAM_REGEX: &'static str = r"(?x)
-    \s*
-    ([^,]+)
-    ,\s*
-    ([^\(]+)
-    \s*\(
-    (.*)
-    \)
-";
+pub const SIG_REGEX: &str = concat!(
+    r"\s*", r"([^,]+)", r"\s*,",
+    r"\s*", r"([^\(]+)", r"\s*",
+    r"\((.*)\)"
+);
 
-pub const CALLTYPE_REGEX: &'static str = r"[^,]+";
+pub const ARG_REGEX: &str = concat!(r"\s*", r"[^,]+", r"\s*");
+
+pub const CALLTYPE_REGEX: &str = r"[^,]+";
 
 #[cfg(test)]
 mod tests {
@@ -88,12 +86,12 @@ mod tests {
         }
     }
 
-    mod param_regex {
+    mod signature_regex {
         use super::*;
 
         fn regex() -> Regex {
             lazy_static! {
-                static ref RE: Regex = Regex::new(PARAM_REGEX).unwrap();
+                static ref RE: Regex = Regex::new(SIG_REGEX).unwrap();
             }
 
             RE.clone()
@@ -114,6 +112,25 @@ mod tests {
             assert_eq!(c.get(1).map(|m| m.as_str()), Some("Foo"));
             assert_eq!(c.get(2).map(|m| m.as_str()), Some("int"));
             assert_eq!(c.get(3).map(|m| m.as_str()), Some("bool"));
+        }
+    }
+
+    mod arg_regex {
+        use super::*;
+
+        fn regex() -> Regex {
+            lazy_static! {
+                static ref RE: Regex = Regex::new(ARG_REGEX).unwrap();
+            }
+
+            RE.clone()
+        }
+
+        #[test]
+        fn test_count() {
+            let cpp = "bool, Foo, int";
+
+            assert_eq!(regex().find_iter(cpp).count(), 3);
         }
     }
 
