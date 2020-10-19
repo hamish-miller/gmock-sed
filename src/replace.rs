@@ -1,15 +1,18 @@
 use std::fmt;
 use colored::*;
+use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 
 use crate::regexes::{MOCK_METHOD_REGEX, MACRO_REGEX, PARAM_REGEX, CALLTYPE_REGEX};
 
 pub fn replace(src: &str) -> ReplaceSummary {
-    let re = Regex::new(MOCK_METHOD_REGEX).unwrap();
+    lazy_static! {
+        static ref RE: Regex = Regex::new(MOCK_METHOD_REGEX).unwrap();
+    }
     let mut err: Vec<String> = Vec::new();
     let mut counter = 0;
 
-    let new = re.replace_all(src, |caps: &Captures| {
+    let new = RE.replace_all(src, |caps: &Captures| {
         counter += 1;
         let original = &caps[0];
 
@@ -86,8 +89,10 @@ struct ParseSignatureError;
 
 impl Signature {
     fn from_str(s: &str) -> Result<Self, ParseSignatureError> {
-        let re = Regex::new(PARAM_REGEX).unwrap();
-        if let Some(c) = re.captures(s) {
+        lazy_static! {
+            static ref RE: Regex = Regex::new(PARAM_REGEX).unwrap();
+        }
+        if let Some(c) = RE.captures(s) {
             Ok(Signature {
                 _return: String::from(c.get(2).unwrap().as_str()),
                 _name: String::from(c.get(1).unwrap().as_str()),
@@ -115,8 +120,10 @@ struct Qualifiers {
 
 impl Qualifiers {
     fn from_str(s: &str, p: &str) -> Self {
-        let re = Regex::new(MACRO_REGEX).unwrap();
-        let c = re.captures(s).unwrap();
+        lazy_static! {
+            static ref RE: Regex = Regex::new(MACRO_REGEX).unwrap();
+        }
+        let c = RE.captures(s).unwrap();
         Qualifiers {
             _const: c.get(1).is_some(),
             _calltype: c.get(2).map(|_| {

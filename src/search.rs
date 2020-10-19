@@ -1,14 +1,17 @@
 use std::fmt;
+use lazy_static::lazy_static;
 use regex::Regex;
 
 use crate::regexes::MOCK_METHOD_SEARCH_REGEX;
 
 pub fn search(source: &str, mode: SearchMode) -> SearchSummary {
-    let re = Regex::new(MOCK_METHOD_SEARCH_REGEX).unwrap();
+    lazy_static! {
+        static ref RE: Regex = Regex::new(MOCK_METHOD_SEARCH_REGEX).unwrap();
+    }
     use SearchMode::*;
     match mode {
-        Lazy => SearchSummary::from(re.is_match(source)),
-        Full => SearchSummary::from(re.find_iter(source).count()),
+        Lazy => SearchSummary::from(RE.is_match(source)),
+        Full => SearchSummary::from(RE.find_iter(source).count()),
     }
 }
 
