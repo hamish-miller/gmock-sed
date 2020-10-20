@@ -3,11 +3,11 @@ use colored::*;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 
-use crate::regexes::{MOCK_METHOD_REGEX, MACRO_REGEX, SIG_REGEX, ARG_REGEX, CALLTYPE_REGEX};
+use crate::regexes::{REPLACE_REGEX, MACRO_REGEX, SIG_REGEX, ARG_REGEX, CALLTYPE_REGEX};
 
 pub fn replace(src: &str) -> ReplaceSummary {
     lazy_static! {
-        static ref RE: Regex = Regex::new(MOCK_METHOD_REGEX).unwrap();
+        static ref RE: Regex = Regex::new(REPLACE_REGEX).unwrap();
     }
     let mut err: Vec<String> = Vec::new();
     let mut counter = 0;
@@ -99,6 +99,7 @@ impl Signature {
                 _args: Args::from_str(c.get(3).unwrap().as_str()).unwrap(),
             })
         } else {
+        println!("foo");
             Err(ParseSignatureError)
         }
     }
@@ -108,9 +109,7 @@ impl Signature {
     }
 }
 
-struct Args {
-    _args: Vec<String>,
-}
+struct Args(String);
 
 #[derive(Debug, Clone)]
 struct ParseArgError;
@@ -121,26 +120,25 @@ impl Args {
             static ref RE: Regex = Regex::new(ARG_REGEX).unwrap();
         }
 
-        let args = RE.find_iter(s).map(|m| m.as_str().to_string()).collect();
-
-        Ok( Args { _args: args })
+        Ok(Args(RE.find(s).unwrap().as_str().to_string()))
     }
 
     fn to_string(&self) -> String {
-        match self._args.len() {
+        match self.0.len() {
             0 => String::new(),
-            1 if self.void() => String::new(),
-            _ => self._args.join(", "),
+            _ if self.void() => String::new(),
+            _ => self.0.clone(),
         }
     }
 
     fn void(&self) -> bool {
-        self._args.get(0).unwrap().trim() == "void"
+        self.0.trim() == "void"
     }
 }
 
 struct Qualifiers {
     _const: bool,
+    _count: usize,
     _calltype: Option<String>,
 }
 
@@ -152,10 +150,13 @@ impl Qualifiers {
         let c = RE.captures(s).unwrap();
         Qualifiers {
             _const: c.get(1).is_some(),
+            _count: c.get(2).unwrap().as_str().parse::<usize>().unwrap(),
             _calltype: c.get(4).map(|_| {
-                let re = Regex::new(CALLTYPE_REGEX).unwrap();
-                let m = re.find(p).unwrap();
-                String::from(m.as_str())
+                lazy_static! {
+                    static ref RE: Regex = Regex::new(CALLTYPE_REGEX).unwrap();
+                }
+
+                RE.find(p).unwrap().as_str().to_string()
             }),
         }
     }
