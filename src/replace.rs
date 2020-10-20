@@ -16,7 +16,7 @@ pub fn replace(src: &str) -> ReplaceSummary {
         counter += 1;
         let original = &caps[0];
 
-        let q = Qualifiers::from_str(&caps[1], &caps[2]);
+        let q = Qualifiers::new(&caps[1]).calltype(&caps[2]);
 
         match Signature::from_str(&caps[2][q.len()..]) {
             Ok(s) => { MockMethod { _signature: s, _qualifiers: q }.to_string() },
@@ -147,22 +147,28 @@ struct Qualifiers {
 }
 
 impl Qualifiers {
-    fn from_str(s: &str, p: &str) -> Self {
+    fn new(_macro: &str) -> Self {
         lazy_static! {
             static ref RE: Regex = Regex::new(MACRO_REGEX).unwrap();
         }
-        let c = RE.captures(s).unwrap();
+
+        let c = RE.captures(_macro).unwrap();
         Qualifiers {
             _const: c.get(1).is_some(),
             _count: c.get(2).unwrap().as_str().parse::<usize>().unwrap(),
-            _calltype: c.get(4).map(|_| {
-                lazy_static! {
-                    static ref RE: Regex = Regex::new(CALLTYPE_REGEX).unwrap();
-                }
-
-                RE.find(p).unwrap().as_str().to_string()
-            }),
+            _calltype: c.get(4).map(|_| String::new()),
         }
+    }
+
+    fn calltype(mut self, params: &str) -> Self {
+        if self._calltype.is_none() { return self }
+
+        lazy_static! {
+            static ref RE: Regex = Regex::new(CALLTYPE_REGEX).unwrap();
+        }
+
+        self._calltype = Some(RE.find(params).unwrap().as_str().to_string());
+        self
     }
 
     fn len(&self) -> usize {
