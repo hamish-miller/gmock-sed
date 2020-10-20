@@ -7,7 +7,7 @@ use std::path::PathBuf;
 use rayon::prelude::*;
 use walkdir::WalkDir;
 
-use gmock_sed::{ReplaceSummary, SearchSummary, SearchMode};
+use gmock_sed::{ReplaceSummary, ReplaceMode, SearchSummary, SearchMode};
 
 fn main() {
     use structopt::StructOpt;
@@ -24,7 +24,7 @@ fn main() {
                       .map(|de| de.into_path())
                       .collect();
 
-            let mode = match count { true => SearchMode::Full, false => SearchMode::Lazy };
+            let mode = SearchMode::from(count);
 
             let results: Vec<SearchSummary> =
                 files.par_iter()
@@ -42,12 +42,14 @@ fn main() {
             }
         },
 
-        Replace { dry_run, files } => {
+        Replace { dry_run, multi_line, files } => {
+            let mode = ReplaceMode::from(multi_line);
+
             let results: Vec<ReplaceSummary> =
                 files.par_iter()
                      .map(|p| util::read(&p))
                      .filter(|s| !s.is_empty())
-                     .map(|cpp| gmock_sed::replace(&cpp))
+                     .map(|cpp| gmock_sed::replace(&cpp, mode))
                      .collect();
 
             for (file, result) in files.iter().zip(results.iter()) {

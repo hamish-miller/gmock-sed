@@ -21,6 +21,12 @@ pub enum SearchMode {
     Full,
 }
 
+impl From<bool> for SearchMode {
+    fn from(flag: bool) -> Self {
+        if flag { SearchMode::Full } else { SearchMode::Lazy }
+    }
+}
+
 #[derive(Debug, PartialEq)]
 pub struct SearchSummary {
     pub is_match: bool,

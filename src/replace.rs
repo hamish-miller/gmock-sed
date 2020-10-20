@@ -3,23 +3,30 @@ use colored::*;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 
-use crate::regexes::{REPLACE_REGEX, MACRO_REGEX, SIG_REGEX, ARG_REGEX, CALLTYPE_REGEX};
+use crate::regexes::{REPLACE_REGEX_S, REPLACE_REGEX_M, MACRO_REGEX, SIG_REGEX, ARG_REGEX, CALLTYPE_REGEX};
 
-pub fn replace(src: &str) -> ReplaceSummary {
+pub fn replace(src: &str, mode: ReplaceMode) -> ReplaceSummary {
     lazy_static! {
-        static ref RE: Regex = Regex::new(REPLACE_REGEX).unwrap();
+        static ref RE_S: Regex = Regex::new(REPLACE_REGEX_S).unwrap();
+        static ref RE_M: Regex = Regex::new(REPLACE_REGEX_M).unwrap();
     }
+
     let mut err: Vec<String> = Vec::new();
     let mut counter = 0;
 
-    let new = RE.replace_all(src, |caps: &Captures| {
+    let re = match mode {
+        ReplaceMode::Single => &RE_S as &Regex,
+        ReplaceMode::Multiple => &RE_M as &Regex,
+    };
+
+    let new = re.replace_all(src, |caps: &Captures| {
         counter += 1;
         let original = &caps[0];
 
         let q = Qualifiers::new(&caps[1]).calltype(&caps[2]);
 
         match Signature::from_str(&caps[2][q.len()..]) {
-            Ok(s) => { MockMethod { _signature: s, _qualifiers: q }.to_string() },
+            Ok(s) => { MockMethod { _signature: s, _qualifiers: q, _mode: mode }.to_string() },
             Err(_e) => {
                 err.push(format!("ParseSignatureError:\t{}", original));
                 String::from(original)
@@ -31,6 +38,18 @@ pub fn replace(src: &str) -> ReplaceSummary {
     let s = match new != src { true => Some(new.to_string()), false => None };
 
     ReplaceSummary { suggestion: s, total: counter, errors: err }
+}
+
+#[derive(Copy, Clone, PartialEq)]
+pub enum ReplaceMode {
+    Single,
+    Multiple,
+}
+
+impl From<bool> for ReplaceMode {
+    fn from(flag: bool) -> Self {
+        if flag { ReplaceMode::Multiple } else { ReplaceMode::Single }
+    }
 }
 
 pub struct ReplaceSummary {
@@ -64,12 +83,17 @@ impl fmt::Display for ReplaceSummary {
 struct MockMethod {
     _signature: Signature,
     _qualifiers: Qualifiers,
+    _mode: ReplaceMode,
 }
 
 impl fmt::Display for MockMethod {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (s, q) = (self._signature.to_string(), self._qualifiers.to_string());
-        write!(f, "MOCK_METHOD({}{})", s, q)
+
+        match self._mode {
+            ReplaceMode::Single   => write!(f, "MOCK_METHOD({}{})", s, q),
+            ReplaceMode::Multiple => write!(f, "MOCK_METHOD({}{});", s, q),
+        }
     }
 }
 

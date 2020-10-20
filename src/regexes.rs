@@ -8,11 +8,11 @@ macro_rules! _macro_regex {
 
 macro_rules! _parentheses {
     (s) => ( r"\((.*)\)" );
-    (m) => ( r"\(((?s).*)\)" );
+    (m) => ( r"\(((?s).*?)\)" );
 }
 
 macro_rules! _mock_method_regex {
-    (s) => ( concat!(_mock_method_regex!(), _parentheses!(s), r"\s*") );
+    (s) => ( concat!(_mock_method_regex!(), _parentheses!(s)) );
     (m) => ( concat!(_mock_method_regex!(), _parentheses!(m), r"\s*", r";") );
     () => ( concat!(r"(", _macro_regex!(?), r")", r"\s*") );
 }
@@ -24,7 +24,9 @@ macro_rules! _signature_regex {
 }
 
 pub const SEARCH_REGEX: &str = _macro_regex!(*);
-pub const REPLACE_REGEX: &str = _mock_method_regex!(s);
+
+pub const REPLACE_REGEX_S: &str = _mock_method_regex!(s);
+pub const REPLACE_REGEX_M: &str = _mock_method_regex!(m);
 
 pub const MACRO_REGEX: &str = _macro_regex!(!);
 
@@ -45,7 +47,7 @@ mod tests {
 
         fn regex() -> Regex {
             lazy_static! {
-                static ref RE: Regex = Regex::new(REPLACE_REGEX).unwrap();
+                static ref RE: Regex = Regex::new(REPLACE_REGEX_S).unwrap();
             }
 
             RE.clone()
