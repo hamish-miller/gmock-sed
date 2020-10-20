@@ -98,9 +98,12 @@ impl Signature {
             Err(ParseSignatureError)
         }
     }
+}
 
-    fn to_string(&self) -> String {
-        format!("{}, {}, ({})", self._return, self._name, self._args.to_string())
+impl fmt::Display for Signature {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (r, n, a) = (&self._return, &self._name, self._args.to_string());
+        write!(f, "{}, {}, ({})", r, n, a)
     }
 }
 
@@ -118,16 +121,22 @@ impl Args {
         Ok(Args(RE.find(s).unwrap().as_str().to_string()))
     }
 
-    fn to_string(&self) -> String {
-        match self.0.len() {
-            0 => String::new(),
-            _ if self.void() => String::new(),
-            _ => self.0.clone(),
-        }
+    fn empty(&self) -> bool {
+        self.0.is_empty()
     }
 
     fn void(&self) -> bool {
         self.0.trim() == "void"
+    }
+}
+
+impl fmt::Display for Args {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.empty() || self.void() {
+            write!(f, "")
+        } else {
+            write!(f, "{}", &self.0)
+        }
     }
 }
 
@@ -156,19 +165,21 @@ impl Qualifiers {
         }
     }
 
-    fn to_string(&self) -> String {
-        match (self._const, self._calltype.as_ref()) {
-            (false, Some(ct)) => format!(", (Calltype({}))", &ct),
-            (true, Some(ct)) => format!(", (const, Calltype({}))", &ct),
-            (false, None) => String::new(),
-            (true, None) => String::from(", (const)"),
-        }
-    }
-
     fn len(&self) -> usize {
         match self._calltype.as_ref() {
             Some(ct) => ct.len(),
             None => 0,
+        }
+    }
+}
+
+impl fmt::Display for Qualifiers {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match (self._const, self._calltype.as_ref()) {
+            (false, None)     => write!(f, ""),
+            (true,  None)     => write!(f, ", (const)"),
+            (false, Some(ct)) => write!(f, ", (Calltype({}))", &ct),
+            (true,  Some(ct)) => write!(f, ", (const, Calltype({}))", &ct),
         }
     }
 }
