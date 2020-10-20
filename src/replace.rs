@@ -66,15 +66,10 @@ struct MockMethod {
     _qualifiers: Qualifiers,
 }
 
-impl MockMethod {
-    fn to_string(&self) -> String {
-        let mut signature = self._signature.to_string();
-
-        if self._qualifiers.to_bool() {
-            signature = format!("{}{}", signature, self._qualifiers.to_string());
-        }
-
-        format!("MOCK_METHOD({})", signature)
+impl fmt::Display for MockMethod {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let (s, q) = (self._signature.to_string(), self._qualifiers.to_string());
+        write!(f, "MOCK_METHOD({}{})", s, q)
     }
 }
 
@@ -168,10 +163,6 @@ impl Qualifiers {
             (false, None) => String::new(),
             (true, None) => String::from(", (const)"),
         }
-    }
-
-    fn to_bool(&self) -> bool {
-        self._const || self._calltype.is_some()
     }
 
     fn len(&self) -> usize {
