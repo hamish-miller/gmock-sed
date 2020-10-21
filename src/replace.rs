@@ -25,14 +25,15 @@ pub fn replace(src: &str, mode: ReplaceMode) -> ReplaceSummary {
 
         let q = Qualifiers::new(&caps[1]).calltype(&caps[2]);
 
-        match Signature::from_str(&caps[2][q.len()..]) {
-            Ok(s) => { MockMethod { _signature: s, _qualifiers: q, _mode: mode }.to_string() },
+        let s = match Signature::new(&caps[2][q.len()..]) {
+            Ok(s) => s,
             Err(_e) => {
                 err.push(format!("ParseSignatureError:\t{}", original));
-                String::from(original)
+                return String::from(original)
             },
-        }
+        };
 
+        MockMethod { _signature: s, _qualifiers: q, _mode: mode }.to_string()
     });
 
     let s = match new != src { true => Some(new.to_string()), false => None };
@@ -107,7 +108,7 @@ struct Signature {
 struct ParseSignatureError;
 
 impl Signature {
-    fn from_str(s: &str) -> Result<Self, ParseSignatureError> {
+    fn new(s: &str) -> Result<Self, ParseSignatureError> {
         lazy_static! {
             static ref RE: Regex = Regex::new(SIG_REGEX).unwrap();
         }
