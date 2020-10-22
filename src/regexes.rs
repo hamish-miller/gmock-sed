@@ -1,7 +1,7 @@
 /// Static regex literals. Compiled to Regex structs elsewhere.
 
 macro_rules! _macro_regex {
-    (*) => ( r"(MOCK_METHOD|MOCK_CONST_METHOD)" );
+    (*) => ( r"(MOCK_METHOD|MOCK_CONST_METHOD)(\d|10)" );
     (!) => ( r"MOCK_(CONST_)?METHOD(\d|10)(_T)?(_WITH_CALLTYPE)?" );
     (?) => ( r"MOCK_(?:CONST_)?METHOD(?:\d|10)(?:_T)?(?:_WITH_CALLTYPE)?" );
 }
@@ -30,6 +30,32 @@ mod tests {
     use super::*;
     use regex::Regex;
     use lazy_static::lazy_static;
+
+    mod search_regex {
+        use super::*;
+
+        fn regex() -> Regex {
+            lazy_static! {
+                static ref RE: Regex = Regex::new(SEARCH_REGEX).unwrap();
+            }
+
+            RE.clone()
+        }
+
+        #[test]
+        fn test_match_on_old_style() {
+            let cpp = "MOCK_METHOD0(Foo, bool())";
+
+            assert!(regex().is_match(cpp));
+        }
+
+        #[test]
+        fn test_no_match_on_new_style() {
+            let cpp = "MOCK_METHOD(bool, Foo, ())";
+
+            assert!(!regex().is_match(cpp));
+        }
+    }
 
     mod replace_regex {
         use super::*;
