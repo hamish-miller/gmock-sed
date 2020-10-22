@@ -1,9 +1,9 @@
 /// Static regex literals. Compiled to Regex structs elsewhere.
 
 macro_rules! _macro_regex {
-    (*) => ( r"(MOCK_METHOD|MOCK_CONST_METHOD)(\d|10)" );
-    (!) => ( r"MOCK_(CONST_)?METHOD(\d|10)(_T)?(_WITH_CALLTYPE)?" );
-    (?) => ( r"MOCK_(?:CONST_)?METHOD(?:\d|10)(?:_T)?(?:_WITH_CALLTYPE)?" );
+    (*) => ( r"(MOCK_METHOD|MOCK_CONST_METHOD)(10|\d)" );
+    (!) => ( r"MOCK_(CONST_)?METHOD(10|\d)(_T)?(_WITH_CALLTYPE)?" );
+    (?) => ( r"MOCK_(?:CONST_)?METHOD(?:10|\d)(?:_T)?(?:_WITH_CALLTYPE)?" );
 }
 
 macro_rules! _mock_method_regex {
@@ -54,6 +54,14 @@ mod tests {
             let cpp = "MOCK_METHOD(bool, Foo, ())";
 
             assert!(!regex().is_match(cpp));
+        }
+
+        #[test]
+        fn test_correct_match_on_old_style_10() {
+            let cpp = "MOCK_METHOD10(...)";
+            let d = regex().captures(cpp).and_then(|c| c.get(2)).map(|m| m.as_str());
+
+            assert_eq!(d, Some("10"));
         }
     }
 
