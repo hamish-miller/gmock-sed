@@ -28,10 +28,6 @@ pub enum Opt {
         #[structopt(long)]
         dry_run: bool,
 
-        /// Enable multi-line mode.
-        #[structopt(long)]
-        multi_line: bool,
-
         /// Paths to files that should be fixed.
         #[structopt(name = "PATHS", parse(from_os_str))]
         files: Vec<PathBuf>,

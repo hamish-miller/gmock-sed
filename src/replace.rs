@@ -3,29 +3,26 @@ use colored::*;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 
-use crate::regexes::{REPLACE_REGEX_S, REPLACE_REGEX_M, MACRO_REGEX, SIG_REGEX, ARG_REGEX, CALLTYPE_REGEX};
+use crate::extract::{lextract, rextract};
+use crate::regexes::{REPLACE_REGEX, MACRO_REGEX, SIG_REGEX, CALLTYPE_REGEX};
 
-pub fn replace(src: &str, mode: ReplaceMode) -> ReplaceSummary {
+pub fn replace(src: &str) -> ReplaceSummary {
     lazy_static! {
-        static ref RE_S: Regex = Regex::new(REPLACE_REGEX_S).unwrap();
-        static ref RE_M: Regex = Regex::new(REPLACE_REGEX_M).unwrap();
+        static ref RE: Regex = Regex::new(REPLACE_REGEX).unwrap();
     }
 
     let mut err: Vec<String> = Vec::new();
     let mut counter = 0;
 
-    let re = match mode {
-        ReplaceMode::Single => &RE_S as &Regex,
-        ReplaceMode::Multiple => &RE_M as &Regex,
-    };
-
-    let new = re.replace_all(src, |caps: &Captures| {
+    let new = RE.replace_all(src, |caps: &Captures| {
         counter += 1;
         let original = &caps[0];
 
-        let q = Qualifiers::new(&caps[1]).calltype(&caps[2]);
+        let parameters = lextract(&caps[2]);
 
-        let s = match Signature::new(&caps[2][q.len()..]) {
+        let q = Qualifiers::new(&caps[1]).calltype(parameters);
+
+        let s = match Signature::new(&parameters[q.len()..]) {
             Ok(s) => s,
             Err(_e) => {
                 err.push(format!("ParseSignatureError:\t{}", original));
@@ -33,24 +30,12 @@ pub fn replace(src: &str, mode: ReplaceMode) -> ReplaceSummary {
             },
         };
 
-        MockMethod { _signature: s, _qualifiers: q, _mode: mode }.to_string()
+        MockMethod::new(s, q, caps.get(3).map(|m| m.as_str())).to_string()
     });
 
     let s = match new != src { true => Some(new.to_string()), false => None };
 
     ReplaceSummary { suggestion: s, total: counter, errors: err }
-}
-
-#[derive(Copy, Clone, PartialEq)]
-pub enum ReplaceMode {
-    Single,
-    Multiple,
-}
-
-impl From<bool> for ReplaceMode {
-    fn from(flag: bool) -> Self {
-        if flag { ReplaceMode::Multiple } else { ReplaceMode::Single }
-    }
 }
 
 pub struct ReplaceSummary {
@@ -84,17 +69,28 @@ impl fmt::Display for ReplaceSummary {
 struct MockMethod {
     _signature: Signature,
     _qualifiers: Qualifiers,
-    _mode: ReplaceMode,
+    _semicolon: bool,
+}
+
+impl MockMethod {
+    fn new(s: Signature, q: Qualifiers, sc: Option<&str>) -> Self {
+        MockMethod {
+            _signature: s,
+            _qualifiers: q,
+            _semicolon: sc == Some(";")
+        }
+    }
+
+    fn semicolon(&self) -> &'static str {
+        if self._semicolon { ";" } else { "" }
+    }
 }
 
 impl fmt::Display for MockMethod {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let (s, q) = (self._signature.to_string(), self._qualifiers.to_string());
 
-        match self._mode {
-            ReplaceMode::Single   => write!(f, "MOCK_METHOD({}{})", s, q),
-            ReplaceMode::Multiple => write!(f, "MOCK_METHOD({}{});", s, q),
-        }
+        write!(f, "MOCK_METHOD({}{}){}", s, q, self.semicolon())
     }
 }
 
@@ -109,19 +105,24 @@ struct ParseSignatureError;
 
 impl Signature {
     fn new(s: &str) -> Result<Self, ParseSignatureError> {
+        let args = rextract(s);
+        let rest = &s[..(s.len() - (args.len() + 2))];
+
         lazy_static! {
             static ref RE: Regex = Regex::new(SIG_REGEX).unwrap();
         }
-        if let Some(c) = RE.captures(s) {
-            Ok(Signature {
-                _return: String::from(c.get(2).unwrap().as_str()),
-                _name: String::from(c.get(1).unwrap().as_str()),
-                _args: Args::from_str(c.get(3).unwrap().as_str()).unwrap(),
-            })
-        } else {
-        println!("foo");
-            Err(ParseSignatureError)
+
+        if let Some(c) = RE.captures(rest) {
+            if let (Some(n), Some(r)) = (c.get(1), c.get(2)) {
+                return Ok(Signature {
+                    _return: r.as_str().to_string(),
+                    _name: n.as_str().to_string(),
+                    _args: Args::new(args),
+                })
+            }
         }
+
+        Err(ParseSignatureError)
     }
 }
 
@@ -138,12 +139,8 @@ struct Args(String);
 struct ParseArgError;
 
 impl Args {
-    fn from_str(s: &str) -> Result<Self, ParseArgError> {
-        lazy_static! {
-            static ref RE: Regex = Regex::new(ARG_REGEX).unwrap();
-        }
-
-        Ok(Args(RE.find(s).unwrap().as_str().to_string()))
+    fn new(s: &str) -> Self {
+        Args(String::from(s))
     }
 
     fn empty(&self) -> bool {
@@ -165,6 +162,7 @@ impl fmt::Display for Args {
     }
 }
 
+#[derive(Debug)]
 struct Qualifiers {
     _const: bool,
     _count: usize,
@@ -192,7 +190,7 @@ impl Qualifiers {
             static ref RE: Regex = Regex::new(CALLTYPE_REGEX).unwrap();
         }
 
-        self._calltype = Some(RE.find(params).unwrap().as_str().to_string());
+        self._calltype = RE.find(params).map(|m| m.as_str().to_string());
         self
     }
 

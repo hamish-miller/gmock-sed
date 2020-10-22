@@ -6,33 +6,21 @@ macro_rules! _macro_regex {
     (?) => ( r"MOCK_(?:CONST_)?METHOD(?:\d|10)(?:_T)?(?:_WITH_CALLTYPE)?" );
 }
 
-macro_rules! _parentheses {
-    (s) => ( r"\((.*)\)" );
-    (m) => ( r"\(((?s).*?)\)" );
-}
-
 macro_rules! _mock_method_regex {
-    (s) => ( concat!(_mock_method_regex!(), _parentheses!(s)) );
-    (m) => ( concat!(_mock_method_regex!(), _parentheses!(m), r"\s*", r";") );
-    () => ( concat!(r"(", _macro_regex!(?), r")", r"\s*") );
+    () => ( concat!(r"(", _macro_regex!(?), r")((?s)[^;]+)(;?)") );
 }
 
 macro_rules! _signature_regex {
-    (s) => ( concat!(_signature_regex!(), _parentheses!(s)) );
-    (m) => ( concat!(_signature_regex!(), _parentheses!(m)) );
     () => ( r"\s*([^,]+)\s*,\s*([^\(]+)\s*" );
 }
 
 pub const SEARCH_REGEX: &str = _macro_regex!(*);
 
-pub const REPLACE_REGEX_S: &str = _mock_method_regex!(s);
-pub const REPLACE_REGEX_M: &str = _mock_method_regex!(m);
+pub const REPLACE_REGEX: &str = _mock_method_regex!();
 
 pub const MACRO_REGEX: &str = _macro_regex!(!);
 
-pub const SIG_REGEX: &str = _signature_regex!(m);
-
-pub const ARG_REGEX: &str = r"(?s).*";
+pub const SIG_REGEX: &str = _signature_regex!();
 
 pub const CALLTYPE_REGEX: &str = r"[^,]+";
 
@@ -47,7 +35,7 @@ mod tests {
 
         fn regex() -> Regex {
             lazy_static! {
-                static ref RE: Regex = Regex::new(REPLACE_REGEX_S).unwrap();
+                static ref RE: Regex = Regex::new(REPLACE_REGEX).unwrap();
             }
 
             RE.clone()
@@ -66,7 +54,7 @@ mod tests {
             let c = regex().captures(cpp).unwrap();
 
             assert_eq!(c.get(1).map(|m| m.as_str()), Some("MOCK_METHOD0"));
-            assert_eq!(c.get(2).map(|m| m.as_str()), Some("Foo, bool()"));
+            assert_eq!(c.get(2).map(|m| m.as_str()), Some("(Foo, bool())"));
         }
     }
 
@@ -125,7 +113,6 @@ mod tests {
 
             assert_eq!(c.get(1).map(|m| m.as_str()), Some("Foo"));
             assert_eq!(c.get(2).map(|m| m.as_str()), Some("int"));
-            assert_eq!(c.get(3).map(|m| m.as_str()), Some("bool, double"));
         }
 
         #[ignore]
@@ -135,34 +122,6 @@ mod tests {
             let c = regex().captures(cpp).unwrap();
 
             assert_eq!(c.get(3).map(|m| m.as_str()), Some("bool,\ndouble"));
-        }
-    }
-
-    mod arg_regex {
-        use super::*;
-
-        fn regex() -> Regex {
-            lazy_static! {
-                static ref RE: Regex = Regex::new(ARG_REGEX).unwrap();
-            }
-
-            RE.clone()
-        }
-
-        #[test]
-        fn test_count() {
-            let cpp = "bool, Foo, int";
-            let m = regex().find(cpp).unwrap();
-
-            assert_eq!(m.as_str(), "bool, Foo, int");
-        }
-
-        #[test]
-        fn test_multiline() {
-            let cpp = "bool,\nFoo,\nint";
-            let m = regex().find(cpp).unwrap();
-
-            assert_eq!(m.as_str(), "bool,\nFoo,\nint");
         }
     }
 

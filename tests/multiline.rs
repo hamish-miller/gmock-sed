@@ -10,7 +10,7 @@ macro_rules! multiline_test {
         fn $name() {
             let path = file($old);
 
-            binary().args(&["replace", "--multi-line", path.to_str().unwrap()])
+            binary().args(&["replace", path.to_str().unwrap()])
                     .assert()
                     .success();
 
@@ -56,6 +56,43 @@ MOCK_METHOD(bool, Bar, (
     int,
     double,
     void,
+));"
+);
+
+multiline_test!(
+test_multiline_const
+"MOCK_CONST_METHOD2(Foo, bool(
+    int,
+    double,
+));"
+->
+"MOCK_METHOD(bool, Foo, (
+    int,
+    double,
+), (const));"
+);
+
+multiline_test!(
+test_multiline_no_trailing_comma
+"MOCK_METHOD2(Foo, bool(
+    int,
+    double));"
+->
+"MOCK_METHOD(bool, Foo, (
+    int,
+    double));"
+);
+
+multiline_test!(
+test_multiline_leading_comma
+"MOCK_METHOD2(Foo, bool(
+      int
+    , double
+));"
+->
+"MOCK_METHOD(bool, Foo, (
+      int
+    , double
 ));"
 );
 
