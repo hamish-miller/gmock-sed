@@ -24,6 +24,7 @@ pub const SIG_REGEX: &str = _signature_regex!();
 
 pub const CALLTYPE_REGEX: &str = r"[^,]+";
 
+
 #[cfg(test)]
 mod tests {
     use super::*;

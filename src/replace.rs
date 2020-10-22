@@ -3,6 +3,7 @@ use colored::*;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 
+use crate::errors::{ParseArgError, ParseSignatureError};
 use crate::extract::{lextract, rextract};
 use crate::regexes::{REPLACE_REGEX, MACRO_REGEX, SIG_REGEX, CALLTYPE_REGEX};
 
@@ -22,7 +23,7 @@ pub fn replace(src: &str) -> ReplaceSummary {
 
         let q = Qualifiers::new(&caps[1]).calltype(parameters);
 
-        let s = match Signature::new(&parameters[q.len()..]) {
+        let s = match Signature::new(q.strip_self(parameters)) {
             Ok(s) => s,
             Err(_e) => {
                 err.push(format!("ParseSignatureError:\t{}", original));
@@ -100,13 +101,10 @@ struct Signature {
     _args: Args,
 }
 
-#[derive(Debug, Clone)]
-struct ParseSignatureError;
-
 impl Signature {
     fn new(s: &str) -> Result<Self, ParseSignatureError> {
-        let args = rextract(s);
-        let rest = &s[..(s.len() - (args.len() + 2))];
+        let args = Args::new(s)?;
+        let rest = args.strip_self(s);
 
         lazy_static! {
             static ref RE: Regex = Regex::new(SIG_REGEX).unwrap();
@@ -117,7 +115,7 @@ impl Signature {
                 return Ok(Signature {
                     _return: r.as_str().to_string(),
                     _name: n.as_str().to_string(),
-                    _args: Args::new(args),
+                    _args: args,
                 })
             }
         }
@@ -135,12 +133,13 @@ impl fmt::Display for Signature {
 
 struct Args(String);
 
-#[derive(Debug, Clone)]
-struct ParseArgError;
-
 impl Args {
-    fn new(s: &str) -> Self {
-        Args(String::from(s))
+    fn new(s: &str) -> Result<Self, ParseArgError> {
+        Ok(Args(rextract(s).to_owned()))
+    }
+
+    fn strip_self<'a>(&self, s: &'a str) -> &'a str {
+        &s[..(s.len() - (self.0.len() + 2))]
     }
 
     fn empty(&self) -> bool {
@@ -190,15 +189,16 @@ impl Qualifiers {
             static ref RE: Regex = Regex::new(CALLTYPE_REGEX).unwrap();
         }
 
-        self._calltype = RE.find(params).map(|m| m.as_str().to_string());
+        self._calltype = RE.find(params).map(|m| m.as_str().to_owned());
         self
     }
 
+    fn strip_self<'a>(&self, s: &'a str) -> &'a str {
+        &s[self.len()..]
+    }
+
     fn len(&self) -> usize {
-        match self._calltype.as_ref() {
-            Some(ct) => ct.len(),
-            None => 0,
-        }
+        self._calltype.as_ref().map_or(0, |ct| ct.len())
     }
 }
 

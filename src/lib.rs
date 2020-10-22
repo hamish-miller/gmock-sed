@@ -1,3 +1,4 @@
+mod errors;
 mod extract;
 mod regexes;
 mod search;
