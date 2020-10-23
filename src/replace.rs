@@ -19,7 +19,7 @@ pub fn replace(src: &str) -> ReplaceSummary {
         counter += 1;
         let original = &caps[0];
 
-        let parameters = lextract(&caps[2]);
+        let parameters = lextract(&caps[2]).expect("Unmatched parenthesis");
 
         let q = Qualifiers::new(&caps[1]).calltype(parameters);
 
@@ -135,7 +135,7 @@ struct Args(String);
 
 impl Args {
     fn new(s: &str) -> Result<Self, ParseArgError> {
-        Ok(Args(rextract(s).to_owned()))
+        Ok(Args(rextract(s)?.to_owned()))
     }
 
     fn strip_self<'a>(&self, s: &'a str) -> &'a str {
