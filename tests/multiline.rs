@@ -96,4 +96,34 @@ test_multiline_leading_comma
 ));"
 );
 
+// Debate-able existing behaviour
+mod current {
+use super::*;
+
+multiline_test!(
+test_multiline_split_bracket
+"MOCK_METHOD2(Foo, bool(
+     int,
+     double)
+);"
+->
+"MOCK_METHOD(bool, Foo, (
+     int,
+     double));"
+);
+
+multiline_test!(
+test_multiline_split_semicolon
+"MOCK_METHOD2(Foo, bool(
+     int,
+     double))
+;"
+->
+"MOCK_METHOD(bool, Foo, (
+     int,
+     double));"
+);
+
+}
+
 }

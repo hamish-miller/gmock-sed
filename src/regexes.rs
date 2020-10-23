@@ -11,7 +11,7 @@ macro_rules! _mock_method_regex {
 }
 
 macro_rules! _signature_regex {
-    () => ( r"\s*([^,]+)\s*,\s*([^\(]+)\s*" );
+    () => ( r"([^,]+),([^\(]+)" );
 }
 
 pub const SEARCH_REGEX: &str = _macro_regex!(*);
@@ -147,7 +147,7 @@ mod tests {
             let c = regex().captures(cpp).unwrap();
 
             assert_eq!(c.get(1).map(|m| m.as_str()), Some("Foo"));
-            assert_eq!(c.get(2).map(|m| m.as_str()), Some("int"));
+            assert_eq!(c.get(2).map(|m| m.as_str()), Some(" int"));
         }
 
         #[ignore]

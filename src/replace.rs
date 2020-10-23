@@ -19,11 +19,11 @@ pub fn replace(src: &str) -> ReplaceSummary {
         counter += 1;
         let original = &caps[0];
 
-        let parameters = lextract(&caps[2]).expect("Unmatched parenthesis");
+        let parameters = lextract(&caps[2].trim()).expect("Unmatched parenthesis");
 
         let q = Qualifiers::new(&caps[1]).calltype(parameters);
 
-        let s = match Signature::new(q.strip_self(parameters)) {
+        let s = match Signature::new(q.strip_self(parameters).trim()) {
             Ok(s) => s,
             Err(_e) => {
                 err.push(format!("ParseSignatureError:\t{}", original));
@@ -110,11 +110,11 @@ impl Signature {
             static ref RE: Regex = Regex::new(SIG_REGEX).unwrap();
         }
 
-        if let Some(c) = RE.captures(rest) {
+        if let Some(c) = RE.captures(rest.trim()) {
             if let (Some(n), Some(r)) = (c.get(1), c.get(2)) {
                 return Ok(Signature {
-                    _return: r.as_str().to_string(),
-                    _name: n.as_str().to_string(),
+                    _return: r.as_str().trim().to_string(),
+                    _name: n.as_str().trim().to_string(),
                     _args: args,
                 })
             }
