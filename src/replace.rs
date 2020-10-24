@@ -29,7 +29,7 @@ pub fn replace(src: &str) -> ReplaceSummary {
 
         let q = Qualifiers::new(&caps[1]).calltype(parameters);
 
-        let s = match Signature::new(q.strip_self(parameters).trim()) {
+        let s = match Signature::new(q.strip_self(parameters).trim(), q.argc) {
             Ok(s) => s,
             Err(e) => {
                 err.push(format!("  {}:\t{}", e, original));
@@ -112,8 +112,8 @@ struct Signature {
 }
 
 impl Signature {
-    fn new(s: &str) -> Result<Self, GmockSedError> {
-        let args = Args::new(s)?;
+    fn new(s: &str, argc: usize) -> Result<Self, GmockSedError> {
+        let args = Args::new(s, argc)?;
         let rest = args.strip_self(s);
 
         lazy_static! {
@@ -123,8 +123,8 @@ impl Signature {
         if let Some(c) = RE.captures(rest.trim()) {
             if let (Some(n), Some(r)) = (c.get(1), c.get(2)) {
                 return Ok(Signature {
-                    _return: r.as_str().trim().to_string(),
-                    _name: n.as_str().trim().to_string(),
+                    _return: protect(r.as_str().trim()),
+                    _name: n.as_str().trim().to_owned(),
                     _args: args,
                 })
             }
@@ -141,32 +141,75 @@ impl fmt::Display for Signature {
     }
 }
 
-struct Args(String);
+struct Args {
+    args: String,
+    argc: usize,
+}
 
 impl Args {
-    fn new(s: &str) -> Result<Self, GmockSedError> {
-        Ok(Args(rextract(s)?.to_owned()))
+    fn new(s: &str, argc: usize) -> Result<Self, GmockSedError> {
+        Ok(Args { args: rextract(s)?.to_owned(), argc: argc })
     }
 
     fn strip_self<'a>(&self, s: &'a str) -> &'a str {
-        &s[..(s.len() - (self.0.len() + 2))]
+        &s[..(s.len() - (self.args.len() + 2))]
     }
 
     fn empty(&self) -> bool {
-        self.0.is_empty()
+        self.args.is_empty()
     }
 
     fn void(&self) -> bool {
-        self.0.trim() == "void"
+        self.args.trim() == "void"
     }
+
+    fn protected(&self) -> String {
+        let mut p = String::new();
+        let mut n = 0;
+        let mut a = 0;
+
+        for (i, c) in self.args.chars().enumerate() {
+            match c {
+                ',' if n == 0 => {
+                    p.push_str(&protect(&self.args[a..i]));
+                    p.push(',');
+                    a = i + 1;
+                },
+                '<' => n += 1,
+                '>' => n -= 1,
+                _ => {},
+            }
+        }
+
+        p.push_str(&protect(&self.args[a..]));
+        p
+    }
+
+    fn contains_unprotected_comma(&self) -> bool {
+        let cc = self.comma_count();
+        let tc = self.trailing_comma();
+
+        self.argc != cc + (!tc as usize)
+    }
+
+    fn comma_count(&self) -> usize {
+        self.args.chars().filter(|&c| c == ',').count()
+    }
+
+    fn trailing_comma(&self) -> bool {
+        self.args.trim_end().ends_with(',')
+    }
+
 }
 
 impl fmt::Display for Args {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if self.empty() || self.void() {
             write!(f, "")
+        } else if self.contains_unprotected_comma() {
+            write!(f, "{}", self.protected())
         } else {
-            write!(f, "{}", &self.0)
+            write!(f, "{}", &self.args)
         }
     }
 }
@@ -174,7 +217,7 @@ impl fmt::Display for Args {
 #[derive(Debug)]
 struct Qualifiers {
     _const: bool,
-    _count: usize,
+    pub argc: usize,
     _calltype: Option<String>,
 }
 
@@ -187,7 +230,7 @@ impl Qualifiers {
         let c = RE.captures(_macro).unwrap();
         Qualifiers {
             _const: c.get(1).is_some(),
-            _count: c.get(2).unwrap().as_str().parse::<usize>().unwrap(),
+            argc: c.get(2).unwrap().as_str().parse::<usize>().unwrap(),
             _calltype: c.get(4).map(|_| String::new()),
         }
     }
@@ -223,3 +266,18 @@ impl fmt::Display for Qualifiers {
     }
 }
 
+
+fn protect(s: &str) -> String {
+    if !s.contains(',') { return s.to_owned() }
+
+    let (lead, arg, trail) = trimmings(s);
+    format!("{}({}){}", lead, arg, trail)
+}
+
+fn trimmings(s: &str) -> (&str, &str, &str) {
+    let not_whitespace = |c| { !char::is_whitespace(c) };
+    let l = s.find(not_whitespace).unwrap();
+    let t = s.rfind(not_whitespace).unwrap() + 1;
+
+    (&s[..l], &s[l..t], &s[t..])
+}
