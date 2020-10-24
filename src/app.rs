@@ -28,6 +28,10 @@ pub enum Opt {
         #[structopt(long)]
         dry_run: bool,
 
+        /// Show code that produced an error.
+        #[structopt(long)]
+        show_errors: bool,
+
         /// Paths to files that should be fixed.
         #[structopt(name = "PATHS", parse(from_os_str))]
         files: Vec<PathBuf>,

@@ -1,22 +1,16 @@
+use std::error;
+use std::fmt;
 
-#[derive(Debug, Clone)]
-pub struct ParseSignatureError;
+#[derive(Debug, PartialEq)]
+pub enum GmockSedError {
+    ParseSignatureError,
+    UnmatchedParenthesisError,
+}
 
-#[derive(Debug, Clone)]
-pub struct ParseArgError;
-
-#[derive(Debug, Clone, PartialEq)]
-pub struct UnmatchedParenthesisError;
-
-
-impl From<ParseArgError> for ParseSignatureError {
-    fn from(_e: ParseArgError) -> ParseSignatureError {
-        ParseSignatureError
+impl fmt::Display for GmockSedError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
     }
 }
 
-impl From<UnmatchedParenthesisError> for ParseArgError {
-    fn from(_e: UnmatchedParenthesisError) -> ParseArgError {
-        ParseArgError
-    }
-}
+impl error::Error for GmockSedError {}

@@ -4,9 +4,9 @@ use gmock_sed::ReplaceSummary;
 
 pub fn read(path: &Path) -> String {
     // Assume small file
-    std::fs::read_to_string(path).unwrap_or_else(|e| {
+    std::fs::read_to_string(path).unwrap_or_else(|_e| {
         #[cfg(debug_assertions)]
-        eprintln!("{}: {}", e, path.display());
+        eprintln!("{}: {}", _e, path.display());
 
         // Pretend the file is empty
         String::new()

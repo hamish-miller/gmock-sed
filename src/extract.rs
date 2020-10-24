@@ -1,8 +1,8 @@
 /// Extract substring from matching parentheses.
 
-use crate::errors::UnmatchedParenthesisError;
+use crate::errors::GmockSedError;
 
-type Result<T> = std::result::Result<T, UnmatchedParenthesisError>;
+type Result<T> = std::result::Result<T, GmockSedError>;
 
 pub fn lextract(s: &str) -> Result<&str> {
     assert!(s.starts_with('('));
@@ -18,7 +18,7 @@ pub fn lextract(s: &str) -> Result<&str> {
         if n == 0 { return Ok(&s[1..i]) }
     }
 
-    Err(UnmatchedParenthesisError)
+    Err(GmockSedError::UnmatchedParenthesisError)
 }
 
 pub fn rextract(s: &str) -> Result<&str> {
@@ -35,7 +35,7 @@ pub fn rextract(s: &str) -> Result<&str> {
         if n == 0 { return Ok(&s[(s.len() - i)..(s.len() - 1)]) }
     }
 
-    Err(UnmatchedParenthesisError)
+    Err(GmockSedError::UnmatchedParenthesisError)
 }
 
 
@@ -51,7 +51,7 @@ mod tests {
 
     #[test]
     fn test_lextract_unmatched() {
-        assert_eq!(lextract("(abc(df)"), Err(UnmatchedParenthesisError));
+        assert_eq!(lextract("(abc(df)"), Err(GmockSedError::UnmatchedParenthesisError));
     }
 
     #[test]
@@ -61,6 +61,6 @@ mod tests {
 
     #[test]
     fn test_rextract_unmatched() {
-        assert_eq!(rextract("xy)"), Err(UnmatchedParenthesisError));
+        assert_eq!(rextract("xy)"), Err(GmockSedError::UnmatchedParenthesisError));
     }
 }

@@ -3,7 +3,7 @@ use colored::*;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 
-use crate::errors::{ParseArgError, ParseSignatureError};
+use crate::errors::GmockSedError;
 use crate::extract::{lextract, rextract};
 use crate::regexes::{REPLACE_REGEX, MACRO_REGEX, SIG_REGEX, CALLTYPE_REGEX};
 
@@ -19,14 +19,20 @@ pub fn replace(src: &str) -> ReplaceSummary {
         counter += 1;
         let original = &caps[0];
 
-        let parameters = lextract(&caps[2].trim()).expect("Unmatched parenthesis");
+        let parameters = match lextract(&caps[2].trim()) {
+            Ok(s) => s,
+            Err(e) => {
+                err.push(format!("  {}:\t{}", e, original));
+                return String::from(original)
+            },
+        };
 
         let q = Qualifiers::new(&caps[1]).calltype(parameters);
 
         let s = match Signature::new(q.strip_self(parameters).trim()) {
             Ok(s) => s,
-            Err(_e) => {
-                err.push(format!("ParseSignatureError:\t{}", original));
+            Err(e) => {
+                err.push(format!("  {}:\t{}", e, original));
                 return String::from(original)
             },
         };
@@ -48,6 +54,10 @@ pub struct ReplaceSummary {
 impl ReplaceSummary {
     pub fn error_free(&self) -> bool {
         self.errors.is_empty() && self.suggestion.is_some()
+    }
+
+    pub fn error_summary(&self) -> String {
+        self.errors.join("\n")
     }
 }
 
@@ -102,7 +112,7 @@ struct Signature {
 }
 
 impl Signature {
-    fn new(s: &str) -> Result<Self, ParseSignatureError> {
+    fn new(s: &str) -> Result<Self, GmockSedError> {
         let args = Args::new(s)?;
         let rest = args.strip_self(s);
 
@@ -120,7 +130,7 @@ impl Signature {
             }
         }
 
-        Err(ParseSignatureError)
+        Err(GmockSedError::ParseSignatureError)
     }
 }
 
@@ -134,7 +144,7 @@ impl fmt::Display for Signature {
 struct Args(String);
 
 impl Args {
-    fn new(s: &str) -> Result<Self, ParseArgError> {
+    fn new(s: &str) -> Result<Self, GmockSedError> {
         Ok(Args(rextract(s)?.to_owned()))
     }
 

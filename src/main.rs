@@ -42,7 +42,7 @@ fn main() {
             }
         },
 
-        Replace { dry_run, files } => {
+        Replace { dry_run, show_errors, files } => {
             let results: Vec<ReplaceSummary> =
                 files.par_iter()
                      .map(|p| util::read(&p))
@@ -50,10 +50,23 @@ fn main() {
                      .map(|cpp| gmock_sed::replace(&cpp))
                      .collect();
 
+            let mut errors = Vec::new();
+
             for (file, result) in files.iter().zip(results.iter()) {
                 println!("{}: {}", file.display(), result);
-                if !dry_run && result.error_free() {
-                    util::write(file, result);
+
+                match (result.error_free(), dry_run) {
+                    (true, true)  => {},
+                    (true, false) => util::write(file, result),
+                    (false, _)    => errors.push((file, result)),
+                }
+            }
+
+            if show_errors && !errors.is_empty() {
+                println!("\nErrors Summary ({})", errors.len());
+
+                for (file, result) in errors.iter() {
+                    println!(" {}:\n{}", file.display(), result.error_summary());
                 }
             }
         }
