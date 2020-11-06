@@ -42,12 +42,12 @@ fn main() {
             }
         },
 
-        Replace { dry_run, show_errors, files } => {
+        Replace { dry_run, show_errors, add_override, files } => {
             let results: Vec<ReplaceSummary> =
                 files.par_iter()
                      .map(|p| util::read(&p))
                      .filter(|s| !s.is_empty())
-                     .map(|cpp| gmock_sed::replace(&cpp))
+                     .map(|cpp| gmock_sed::replace(&cpp, add_override))
                      .collect();
 
             let mut errors = Vec::new();

@@ -7,7 +7,7 @@ use crate::errors::GmockSedError;
 use crate::extract::{lextract, rextract};
 use crate::regexes::{REPLACE_REGEX, MACRO_REGEX, SIG_REGEX, CALLTYPE_REGEX};
 
-pub fn replace(src: &str) -> ReplaceSummary {
+pub fn replace(src: &str, add_override: bool) -> ReplaceSummary {
     lazy_static! {
         static ref RE: Regex = Regex::new(REPLACE_REGEX).unwrap();
     }
@@ -27,7 +27,7 @@ pub fn replace(src: &str) -> ReplaceSummary {
             },
         };
 
-        let q = Qualifiers::new(&caps[1]).calltype(parameters);
+        let q = Qualifiers::new(&caps[1], add_override).calltype(parameters);
 
         let s = match Signature::new(q.strip_self(parameters).trim(), q.argc) {
             Ok(s) => s,
@@ -217,12 +217,13 @@ impl fmt::Display for Args {
 #[derive(Debug)]
 struct Qualifiers {
     _const: bool,
+    _override: bool,
     pub argc: usize,
     _calltype: Option<String>,
 }
 
 impl Qualifiers {
-    fn new(_macro: &str) -> Self {
+    fn new(_macro: &str, add_override: bool) -> Self {
         lazy_static! {
             static ref RE: Regex = Regex::new(MACRO_REGEX).unwrap();
         }
@@ -230,6 +231,7 @@ impl Qualifiers {
         let c = RE.captures(_macro).unwrap();
         Qualifiers {
             _const: c.get(1).is_some(),
+            _override: add_override,
             argc: c.get(2).unwrap().as_str().parse::<usize>().unwrap(),
             _calltype: c.get(4).map(|_| String::new()),
         }
@@ -257,11 +259,15 @@ impl Qualifiers {
 
 impl fmt::Display for Qualifiers {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match (self._const, self._calltype.as_ref()) {
-            (false, None)     => write!(f, ""),
-            (true,  None)     => write!(f, ", (const)"),
-            (false, Some(ct)) => write!(f, ", (Calltype({}))", &ct),
-            (true,  Some(ct)) => write!(f, ", (const, Calltype({}))", &ct),
+        match (self._const, self._override, self._calltype.as_ref()) {
+            (false, false, None)     => write!(f, ""),
+            (true,  false, None)     => write!(f, ", (const)"),
+            (false, true,  None)     => write!(f, ", (override)"),
+            (false, false, Some(ct)) => write!(f, ", (Calltype({}))", &ct),
+            (true,  true,  None)     => write!(f, ", (const, override)"),
+            (true,  false, Some(ct)) => write!(f, ", (const, Calltype({}))", &ct),
+            (false, true,  Some(ct)) => write!(f, ", (override, Calltype({}))", &ct),
+            (true,  true,  Some(ct)) => write!(f, ", (const, override, Calltype({}))", &ct),
         }
     }
 }

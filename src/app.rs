@@ -32,6 +32,10 @@ pub enum Opt {
         #[structopt(long)]
         show_errors: bool,
 
+        /// Add 'override' keyword to qualifiers
+        #[structopt(long)]
+        add_override: bool,
+
         /// Paths to files that should be fixed.
         #[structopt(name = "PATHS", parse(from_os_str))]
         files: Vec<PathBuf>,
